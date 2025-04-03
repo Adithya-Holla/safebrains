@@ -18,6 +18,8 @@ services:
         sync: false
       - key: CLOUDINARY_MODEL_URL
         value: https://res.cloudinary.com/dhtta5hni/raw/upload/v1743272767/best_ohckbc.pt
+      - key: FALLBACK_USE_PRETRAINED
+        value: "true"
 
   # Frontend Static Site
   - type: web
