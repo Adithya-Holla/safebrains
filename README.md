@@ -24,6 +24,7 @@ To host the large ML model file (best.pt) on Cloudinary:
    - `CLOUDINARY_API_KEY`: Your Cloudinary API key
    - `CLOUDINARY_API_SECRET`: Your Cloudinary API secret
    - `CLOUDINARY_MODEL_URL`: The secure URL of your uploaded model file
+     - Example: `https://res.cloudinary.com/dhtta5hni/raw/upload/v1743272767/best_ohckbc.pt`
 
 These settings can be found in your Cloudinary dashboard under "Account Details".
 
@@ -36,7 +37,7 @@ These settings can be found in your Cloudinary dashboard under "Account Details"
 4. Connect your GitHub account if you haven't already
 5. Select your repository with this project
 6. Render will automatically detect the `render.yaml` file and set up both services
-7. Before applying, add your Cloudinary environment variables
+7. Before applying, add your Cloudinary environment variables (if not already set in render.yaml)
 8. Click "Apply" to start the deployment
 
 ### Manual Deployment
@@ -52,7 +53,8 @@ These settings can be found in your Cloudinary dashboard under "Account Details"
    - Build Command: `pip install -r requirements.txt`
    - Start Command: `gunicorn Backend:app`
    - Select the Free plan
-5. Add the Cloudinary environment variables in the "Environment" section
+5. Add the Cloudinary environment variables in the "Environment" section:
+   - Set `CLOUDINARY_MODEL_URL` to `https://res.cloudinary.com/dhtta5hni/raw/upload/v1743272767/best_ohckbc.pt`
 6. Click "Create Web Service"
 
 #### Frontend Deployment
@@ -88,5 +90,5 @@ Create a `.env` file in the Backend directory with the following variables:
 CLOUDINARY_CLOUD_NAME=your_cloud_name
 CLOUDINARY_API_KEY=your_api_key
 CLOUDINARY_API_SECRET=your_api_secret
-CLOUDINARY_MODEL_URL=your_model_url
+CLOUDINARY_MODEL_URL=https://res.cloudinary.com/dhtta5hni/raw/upload/v1743272767/best_ohckbc.pt
 ``` 

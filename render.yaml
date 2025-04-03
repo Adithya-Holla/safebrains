@@ -17,7 +17,7 @@ services:
       - key: CLOUDINARY_API_SECRET
         sync: false
       - key: CLOUDINARY_MODEL_URL
-        sync: false
+        value: https://res.cloudinary.com/dhtta5hni/raw/upload/v1743272767/best_ohckbc.pt
 
   # Frontend Static Site
   - type: web
