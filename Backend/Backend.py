@@ -11,6 +11,9 @@ import cloudinary
 import cloudinary.uploader
 import cloudinary.api
 import requests
+import torch
+from torch.serialization import add_safe_globals
+import sys
 
 app = Flask(__name__)
 # Enable CORS for all routes with additional options
@@ -43,6 +46,13 @@ cloudinary.config(
 
 # Load model from Cloudinary or local path
 def load_model():
+    try:
+        from ultralytics.nn.tasks import DetectionModel
+        # Add DetectionModel to safe globals for PyTorch 2.6+
+        add_safe_globals([DetectionModel])
+    except Exception as e:
+        print(f"Warning when adding safe globals: {e}")
+        
     if os.environ.get('CLOUDINARY_MODEL_URL'):
         # Download model from Cloudinary
         model_url = os.environ.get('CLOUDINARY_MODEL_URL')
@@ -60,12 +70,40 @@ def load_model():
                 f.write(chunk)
         
         print(f"Model downloaded and saved to {model_path}")
-        return YOLO(model_path)
+        
+        try:
+            # First try loading with default settings (weights_only=True in PyTorch 2.6+)
+            return YOLO(model_path)
+        except Exception as e1:
+            print(f"Error loading model with default settings: {e1}")
+            try:
+                # Try loading with weights_only=False
+                print("Attempting to load model with weights_only=False")
+                model = torch.load(model_path, map_location='cpu', weights_only=False)
+                # If this succeeds, write the model back in a compatible format
+                torch.save(model, model_path, _use_new_zipfile_serialization=True)
+                return YOLO(model_path)
+            except Exception as e2:
+                print(f"Error loading model with weights_only=False: {e2}")
+                # Final attempt with direct YOLO instantiation
+                print("Attempting to load model directly")
+                return YOLO(model_path, task='detect')
     else:
         # Fall back to local model
         MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best.pt')
         print(f"Loading local model from {MODEL_PATH}")
-        return YOLO(MODEL_PATH)
+        try:
+            return YOLO(MODEL_PATH)
+        except Exception as e:
+            print(f"Error loading local model: {e}")
+            # Try with weights_only=False as a fallback
+            try:
+                print("Attempting to load local model with weights_only=False")
+                model = torch.load(MODEL_PATH, map_location='cpu', weights_only=False)
+                return YOLO(MODEL_PATH, task='detect')
+            except Exception as e2:
+                print(f"Error loading local model with weights_only=False: {e2}")
+                raise
 
 # Initialize model
 try:
