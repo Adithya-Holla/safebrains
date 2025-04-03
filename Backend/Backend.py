@@ -7,6 +7,10 @@ import numpy as np
 from ultralytics import YOLO
 import tempfile
 import traceback
+import cloudinary
+import cloudinary.uploader
+import cloudinary.api
+import requests
 
 app = Flask(__name__)
 # Enable CORS for all routes with additional options
@@ -30,13 +34,59 @@ def allowed_file(filename):
     """Check if the file has an allowed extension."""
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
-# Load your YOLOv8 model
-MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best.pt')
+# Configure Cloudinary from environment variables
+cloudinary.config(
+    cloud_name=os.environ.get('CLOUDINARY_CLOUD_NAME', ''),
+    api_key=os.environ.get('CLOUDINARY_API_KEY', ''),
+    api_secret=os.environ.get('CLOUDINARY_API_SECRET', '')
+)
+
+# Load model from Cloudinary or local path
+def load_model():
+    if os.environ.get('CLOUDINARY_MODEL_URL'):
+        # Download model from Cloudinary
+        model_url = os.environ.get('CLOUDINARY_MODEL_URL')
+        model_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best.pt')
+        
+        print(f"Downloading model from Cloudinary: {model_url}")
+        
+        # Download the file
+        response = requests.get(model_url, stream=True)
+        response.raise_for_status()  # Raise an exception for HTTP errors
+        
+        # Write the file to disk
+        with open(model_path, 'wb') as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+        
+        print(f"Model downloaded and saved to {model_path}")
+        return YOLO(model_path)
+    else:
+        # Fall back to local model
+        MODEL_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'best.pt')
+        print(f"Loading local model from {MODEL_PATH}")
+        return YOLO(MODEL_PATH)
+
+# Initialize model
 try:
-    model = YOLO(MODEL_PATH)
+    model = load_model()
 except Exception as e:
     print(f"Error loading model: {e}")
+    traceback.print_exc()
     model = None
+
+# Function to upload a file to Cloudinary
+def upload_to_cloudinary(file_path, folder="processed_images"):
+    try:
+        result = cloudinary.uploader.upload(
+            file_path,
+            folder=folder,
+            resource_type="image"
+        )
+        return result['secure_url']
+    except Exception as e:
+        print(f"Cloudinary upload error: {e}")
+        return None
 
 def process_file(file_path):
     """
@@ -77,13 +127,20 @@ def process_file(file_path):
     processed_image_path = os.path.join(app.config['PROCESSED_IMAGES_FOLDER'], processed_image_name)
     result.save(processed_image_path)  # Save the processed image with bounding boxes
     print(f"Processed image saved at: {processed_image_path}")  # Debugging log
+    
+    # Upload to Cloudinary if configured
+    image_url = None
+    if os.environ.get('CLOUDINARY_CLOUD_NAME'):
+        image_url = upload_to_cloudinary(processed_image_path)
+        print(f"Image uploaded to Cloudinary: {image_url}")
 
     # Return the result with Python native types
     result = {
         "tumor_type": str(tumor_type),  # Ensure string type
         "risk_level": str(risk_level),  # Ensure string type
         "probability": float(max_probability),  # Convert to Python float
-        "processed_image_path": processed_image_name  # Return just the filename
+        "processed_image_path": processed_image_name,  # Return just the filename
+        "image_url": image_url  # Cloudinary URL if available
     }
     return result
 
@@ -100,6 +157,7 @@ def upload_files():
     risk_levels = []
     probabilities = []
     processed_images = []
+    image_urls = []
 
     try:
         for key, file in request.files.items():
@@ -120,6 +178,10 @@ def upload_files():
                 risk_levels.append(result["risk_level"])
                 probabilities.append(float(result["probability"]))  # Ensure float type
                 processed_images.append(result["processed_image_path"])  # Store just the filename
+                
+                if result.get("image_url"):
+                    image_urls.append(result["image_url"])
+                    
                 print(f"Processed image saved at: {result['processed_image_path']}")
             except Exception as e:
                 print(f"Error processing file: {e}")
@@ -135,7 +197,8 @@ def upload_files():
             "tumor_type": str(final_tumor_type),  # Ensure string type
             "risk_level": str(final_risk_level),  # Ensure string type
             "probability": float(max_probability),  # Ensure float type
-            "processed_images": processed_images  # List of filenames
+            "processed_images": processed_images,  # List of filenames
+            "image_urls": image_urls if image_urls else None  # Cloudinary URLs if available
         }
         print(f"Final result: {final_result}")
         return jsonify(final_result)

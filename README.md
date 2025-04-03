@@ -7,6 +7,26 @@ A brain tumor detection application with ML-powered analysis.
 - **Frontend**: React.js application 
 - **Backend**: Flask API with ML model for tumor detection
 
+## Cloudinary Setup for ML Model Hosting
+
+To host the large ML model file (best.pt) on Cloudinary:
+
+1. Sign up for a Cloudinary account at https://cloudinary.com/
+2. Upload your `best.pt` model file to Cloudinary:
+   - Go to the Media Library in your Cloudinary dashboard
+   - Create a new folder named "models"
+   - Upload the `best.pt` file to this folder
+   - Set the resource type to "Raw" when uploading
+   - After upload, click on the file and copy the "Secure delivery URL"
+
+3. Set up environment variables in Render:
+   - `CLOUDINARY_CLOUD_NAME`: Your Cloudinary cloud name
+   - `CLOUDINARY_API_KEY`: Your Cloudinary API key
+   - `CLOUDINARY_API_SECRET`: Your Cloudinary API secret
+   - `CLOUDINARY_MODEL_URL`: The secure URL of your uploaded model file
+
+These settings can be found in your Cloudinary dashboard under "Account Details".
+
 ## Deployment on Render
 
 ### Using the Blueprint (Easiest Method)
@@ -16,7 +36,8 @@ A brain tumor detection application with ML-powered analysis.
 4. Connect your GitHub account if you haven't already
 5. Select your repository with this project
 6. Render will automatically detect the `render.yaml` file and set up both services
-7. Click "Apply" to start the deployment
+7. Before applying, add your Cloudinary environment variables
+8. Click "Apply" to start the deployment
 
 ### Manual Deployment
 
@@ -31,7 +52,8 @@ A brain tumor detection application with ML-powered analysis.
    - Build Command: `pip install -r requirements.txt`
    - Start Command: `gunicorn Backend:app`
    - Select the Free plan
-5. Click "Create Web Service"
+5. Add the Cloudinary environment variables in the "Environment" section
+6. Click "Create Web Service"
 
 #### Frontend Deployment
 1. Go to your Render dashboard
@@ -58,4 +80,13 @@ A brain tumor detection application with ML-powered analysis.
    cd Frontend
    npm install
    npm start
-   ``` 
+   ```
+   
+## For Local Development with Cloudinary
+Create a `.env` file in the Backend directory with the following variables:
+```
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+CLOUDINARY_MODEL_URL=your_model_url
+``` 
